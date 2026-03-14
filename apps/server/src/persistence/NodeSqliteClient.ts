@@ -74,7 +74,8 @@ const makeWithDatabase = (
         if (cached !== undefined) {
           return cached;
         }
-        const value = statement.columns().length > 0;
+        const value =
+          typeof statement.columns === "function" ? statement.columns().length > 0 : true;
         statementReaderCache.set(statement, value);
         return value;
       };
@@ -110,31 +111,45 @@ const makeWithDatabase = (
       const run = (sql: string, params: ReadonlyArray<unknown>, raw = false) =>
         Effect.flatMap(Cache.get(prepareCache, sql), (s) => runStatement(s, params, raw));
 
+      const testStatement = db.prepare("SELECT 1");
+      const supportsReturnArrays = typeof testStatement.setReturnArrays === "function";
+
       const runValues = (sql: string, params: ReadonlyArray<unknown>) =>
-        Effect.acquireUseRelease(
-          Cache.get(prepareCache, sql),
-          (statement) =>
-            Effect.try({
-              try: () => {
-                if (hasRows(statement)) {
-                  statement.setReturnArrays(true);
-                  // Safe to cast to array after we've setReturnArrays(true)
-                  return statement.all(...(params as any)) as unknown as ReadonlyArray<
+        supportsReturnArrays
+          ? Effect.acquireUseRelease(
+              Cache.get(prepareCache, sql),
+              (statement) =>
+                Effect.try({
+                  try: () => {
+                    if (hasRows(statement)) {
+                      statement.setReturnArrays(true);
+                      return statement.all(...(params as any)) as unknown as ReadonlyArray<
+                        ReadonlyArray<unknown>
+                      >;
+                    }
+                    statement.run(...(params as any));
+                    return [];
+                  },
+                  catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" }),
+                }),
+              (statement) =>
+                Effect.sync(() => {
+                  if (hasRows(statement)) {
+                    statement.setReturnArrays(false);
+                  }
+                }),
+            )
+          : Effect.flatMap(Cache.get(prepareCache, sql), (statement) =>
+              Effect.try({
+                try: () => {
+                  const rows = statement.all(...(params as any));
+                  return rows.map((row: any) => Object.values(row)) as ReadonlyArray<
                     ReadonlyArray<unknown>
                   >;
-                }
-                statement.run(...(params as any));
-                return [];
-              },
-              catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" }),
-            }),
-          (statement) =>
-            Effect.sync(() => {
-              if (hasRows(statement)) {
-                statement.setReturnArrays(false);
-              }
-            }),
-        );
+                },
+                catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" }),
+              }),
+            );
 
       return identity<Connection>({
         execute(sql, params, rowTransform) {

@@ -92,6 +92,7 @@ interface ToolInFlight {
 
 interface ClaudeSessionContext {
   session: ProviderSession;
+  readonly inputThreadId: ThreadId;
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
   readonly query: ClaudeQueryRuntime;
   readonly startedAt: string;
@@ -130,7 +131,7 @@ function isUuid(value: string): boolean {
 }
 
 function isSyntheticClaudeThreadId(value: string): boolean {
-  return value.startsWith("claude-thread-");
+  return value.startsWith("thread-claude-");
 }
 
 function toMessage(cause: unknown, fallback: string): string {
@@ -570,6 +571,14 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
         }
         const nextThreadId = message.session_id;
         context.resumeSessionId = message.session_id;
+
+        if (context.session.threadId === undefined) {
+          context.session = {
+            ...context.session,
+            threadId: ThreadId.makeUnsafe(nextThreadId),
+          };
+        }
+
         yield* updateResumeCursor(context);
 
         if (context.lastThreadStartedId !== nextThreadId) {
@@ -1351,18 +1360,37 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           });
         }
 
-        sessions.delete(context.session.threadId);
+        sessions.delete(context.inputThreadId);
       });
 
+    const resolveSession = (
+      threadId: ThreadId | undefined,
+    ): ClaudeSessionContext | undefined => {
+      if (threadId !== undefined) {
+        const direct = sessions.get(threadId);
+        if (direct) return direct;
+      }
+      for (const ctx of sessions.values()) {
+        if (
+          ctx.session.threadId === threadId ||
+          ctx.inputThreadId === threadId ||
+          threadId === undefined
+        ) {
+          return ctx;
+        }
+      }
+      return undefined;
+    };
+
     const requireSession = (
-      threadId: ThreadId,
+      threadId: ThreadId | undefined,
     ): Effect.Effect<ClaudeSessionContext, ProviderAdapterError> => {
-      const context = sessions.get(threadId);
+      const context = resolveSession(threadId);
       if (!context) {
         return Effect.fail(
           new ProviderAdapterSessionNotFoundError({
             provider: PROVIDER,
-            threadId,
+            threadId: threadId ?? ThreadId.makeUnsafe("unknown"),
           }),
         );
       }
@@ -1370,7 +1398,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
         return Effect.fail(
           new ProviderAdapterSessionClosedError({
             provider: PROVIDER,
-            threadId,
+            threadId: context.inputThreadId,
           }),
         );
       }
@@ -1389,6 +1417,10 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
 
         const startedAt = yield* nowIso;
         const resumeState = readClaudeResumeState(input.resumeCursor);
+        const providerThreadId = resumeState?.threadId
+          ?? (input.threadId && !isSyntheticClaudeThreadId(input.threadId)
+            ? input.threadId
+            : undefined);
         const threadId = input.threadId;
 
         const promptQueue = yield* Queue.unbounded<PromptQueueItem>();
@@ -1578,15 +1610,15 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
         });
 
         const session: ProviderSession = {
-          threadId,
+          threadId: providerThreadId,
           provider: PROVIDER,
           status: "ready",
           runtimeMode: input.runtimeMode,
           ...(input.cwd ? { cwd: input.cwd } : {}),
           ...(input.model ? { model: input.model } : {}),
-          ...(threadId ? { threadId } : {}),
+          ...(providerThreadId ? { threadId: providerThreadId } : {}),
           resumeCursor: {
-            ...(threadId ? { threadId } : {}),
+            ...(providerThreadId ? { threadId: providerThreadId } : {}),
             ...(resumeState?.resume ? { resume: resumeState.resume } : {}),
             ...(resumeState?.resumeSessionAt
               ? { resumeSessionAt: resumeState.resumeSessionAt }
@@ -1599,6 +1631,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
 
         const context: ClaudeSessionContext = {
           session,
+          inputThreadId: input.threadId,
           promptQueue,
           query: queryRuntime,
           startedAt,
@@ -1612,7 +1645,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           stopped: false,
         };
         yield* Ref.set(contextRef, context);
-        sessions.set(threadId, context);
+        sessions.set(input.threadId, context);
 
         const sessionStartedStamp = yield* makeEventStamp();
         yield* offerRuntimeEvent({
@@ -1620,10 +1653,10 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           eventId: sessionStartedStamp.eventId,
           provider: PROVIDER,
           createdAt: sessionStartedStamp.createdAt,
-          threadId,
+          ...(providerThreadId ? { threadId: providerThreadId } : {}),
           payload: input.resumeCursor !== undefined ? { resume: input.resumeCursor } : {},
           providerRefs: {},
-        });
+        } as ProviderRuntimeEvent);
 
         const configuredStamp = yield* makeEventStamp();
         yield* offerRuntimeEvent({
@@ -1631,7 +1664,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           eventId: configuredStamp.eventId,
           provider: PROVIDER,
           createdAt: configuredStamp.createdAt,
-          threadId,
+          ...(providerThreadId ? { threadId: providerThreadId } : {}),
           payload: {
             config: {
               ...(input.model ? { model: input.model } : {}),
@@ -1643,7 +1676,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
             },
           },
           providerRefs: {},
-        });
+        } as ProviderRuntimeEvent);
 
         const readyStamp = yield* makeEventStamp();
         yield* offerRuntimeEvent({
@@ -1651,12 +1684,12 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           eventId: readyStamp.eventId,
           provider: PROVIDER,
           createdAt: readyStamp.createdAt,
-          threadId,
+          ...(providerThreadId ? { threadId: providerThreadId } : {}),
           payload: {
             state: "ready",
           },
           providerRefs: {},
-        });
+        } as ProviderRuntimeEvent);
 
         Effect.runFork(runSdkStream(context));
 
