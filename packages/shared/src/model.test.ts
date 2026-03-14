@@ -44,8 +44,12 @@ describe("normalizeModelSlug", () => {
   });
 
   it("uses provider-specific aliases", () => {
-    expect(normalizeModelSlug("sonnet", "claudeCode")).toBe("claude-sonnet-4-6");
-    expect(normalizeModelSlug("opus-4.6", "claudeCode")).toBe("claude-opus-4-6");
+    expect(normalizeModelSlug("sonnet", "claudeCode")).toBe(
+      "claude-sonnet-4-6",
+    );
+    expect(normalizeModelSlug("opus-4.6", "claudeCode")).toBe(
+      "claude-opus-4-6",
+    );
     expect(normalizeModelSlug("claude-haiku-4-5-20251001", "claudeCode")).toBe(
       "claude-haiku-4-5",
     );
@@ -68,7 +72,9 @@ describe("resolveModelSlug", () => {
 
   it("preserves unknown custom models", () => {
     expect(resolveModelSlug("gpt-4.1")).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
-    expect(resolveModelSlug("custom/internal-model")).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
+    expect(resolveModelSlug("custom/internal-model")).toBe(
+      DEFAULT_MODEL_BY_PROVIDER.codex,
+    );
   });
 
   it("resolves only supported model options", () => {
@@ -81,17 +87,21 @@ describe("resolveModelSlug", () => {
     expect(resolveModelSlugForProvider("claudeCode", undefined)).toBe(
       DEFAULT_MODEL_BY_PROVIDER.claudeCode,
     );
-    expect(resolveModelSlugForProvider("claudeCode", "sonnet")).toBe("claude-sonnet-4-6");
+    expect(resolveModelSlugForProvider("claudeCode", "sonnet")).toBe(
+      "claude-sonnet-4-6",
+    );
     expect(resolveModelSlugForProvider("claudeCode", "gpt-5.3-codex")).toBe(
       DEFAULT_MODEL_BY_PROVIDER.claudeCode,
     );
     expect(resolveModelSlugForProvider("cursor", undefined)).toBe(
       DEFAULT_MODEL_BY_PROVIDER.cursor,
     );
-    expect(resolveModelSlugForProvider("cursor", "composer")).toBe("composer-1.5");
-    expect(resolveModelSlugForProvider("cursor", "gpt-5.3-codex-high-fast")).toBe(
-      "gpt-5.3-codex-high-fast",
+    expect(resolveModelSlugForProvider("cursor", "composer")).toBe(
+      "composer-1.5",
     );
+    expect(
+      resolveModelSlugForProvider("cursor", "gpt-5.3-codex-high-fast"),
+    ).toBe("gpt-5.3-codex-high-fast");
     expect(resolveModelSlugForProvider("cursor", "claude-sonnet-4-6")).toBe(
       DEFAULT_MODEL_BY_PROVIDER.cursor,
     );
@@ -100,7 +110,9 @@ describe("resolveModelSlug", () => {
   it("keeps codex defaults for backward compatibility", () => {
     expect(getDefaultModel()).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
     expect(getModelOptions()).toEqual(MODEL_OPTIONS_BY_PROVIDER.codex);
-    expect(getModelOptions("claudeCode")).toEqual(MODEL_OPTIONS_BY_PROVIDER.claudeCode);
+    expect(getModelOptions("claudeCode")).toEqual(
+      MODEL_OPTIONS_BY_PROVIDER.claudeCode,
+    );
     expect(getModelOptions("cursor")).toEqual(MODEL_OPTIONS_BY_PROVIDER.cursor);
     expect(getCursorModelFamilyOptions()).toEqual(CURSOR_MODEL_FAMILY_OPTIONS);
   });
@@ -108,9 +120,18 @@ describe("resolveModelSlug", () => {
 
 describe("cursor model selection", () => {
   it("includes the expected cursor reasoning levels and families", () => {
-    expect(CURSOR_REASONING_OPTIONS).toEqual(["low", "normal", "high", "xhigh"]);
-    expect(getCursorModelFamilyOptions().map((option) => option.slug)).toContain("gpt-5.3-codex");
-    expect(getCursorModelFamilyOptions().map((option) => option.slug)).toContain("opus-4.6");
+    expect(CURSOR_REASONING_OPTIONS).toEqual([
+      "low",
+      "normal",
+      "high",
+      "xhigh",
+    ]);
+    expect(
+      getCursorModelFamilyOptions().map((option) => option.slug),
+    ).toContain("gpt-5.3-codex");
+    expect(
+      getCursorModelFamilyOptions().map((option) => option.slug),
+    ).toContain("opus-4.6");
   });
 
   it("parses codex reasoning and fast mode variants", () => {

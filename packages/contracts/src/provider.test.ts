@@ -3,8 +3,12 @@ import { Schema } from "effect";
 
 import { ProviderSendTurnInput, ProviderSessionStartInput } from "./provider";
 
-const decodeProviderSessionStartInput = Schema.decodeUnknownSync(ProviderSessionStartInput);
-const decodeProviderSendTurnInput = Schema.decodeUnknownSync(ProviderSendTurnInput);
+const decodeProviderSessionStartInput = Schema.decodeUnknownSync(
+  ProviderSessionStartInput,
+);
+const decodeProviderSendTurnInput = Schema.decodeUnknownSync(
+  ProviderSendTurnInput,
+);
 
 describe("ProviderSessionStartInput", () => {
   it("accepts codex-compatible payloads", () => {
@@ -30,7 +34,9 @@ describe("ProviderSessionStartInput", () => {
     expect(parsed.runtimeMode).toBe("full-access");
     expect(parsed.modelOptions?.codex?.reasoningEffort).toBe("high");
     expect(parsed.modelOptions?.codex?.fastMode).toBe(true);
-    expect(parsed.providerOptions?.codex?.binaryPath).toBe("/usr/local/bin/codex");
+    expect(parsed.providerOptions?.codex?.binaryPath).toBe(
+      "/usr/local/bin/codex",
+    );
     expect(parsed.providerOptions?.codex?.homePath).toBe("/tmp/.codex");
   });
 
@@ -59,7 +65,9 @@ describe("ProviderSessionStartInput", () => {
       runtimeMode: "full-access",
     });
     expect(parsed.provider).toBe("claudeCode");
-    expect(parsed.providerOptions?.claudeCode?.binaryPath).toBe("/usr/local/bin/claude");
+    expect(parsed.providerOptions?.claudeCode?.binaryPath).toBe(
+      "/usr/local/bin/claude",
+    );
     expect(parsed.providerOptions?.claudeCode?.permissionMode).toBe("plan");
     expect(parsed.providerOptions?.claudeCode?.maxThinkingTokens).toBe(12_000);
     expect(parsed.runtimeMode).toBe("full-access");
@@ -86,7 +94,9 @@ describe("ProviderSessionStartInput", () => {
     expect(parsed.provider).toBe("cursor");
     expect(parsed.model).toBe("composer-1.5");
     expect(parsed.modelOptions?.cursor?.thinking).toBe(true);
-    expect(parsed.providerOptions?.cursor?.binaryPath).toBe("/usr/local/bin/agent");
+    expect(parsed.providerOptions?.cursor?.binaryPath).toBe(
+      "/usr/local/bin/agent",
+    );
     expect(parsed.runtimeMode).toBe("approval-required");
   });
 });

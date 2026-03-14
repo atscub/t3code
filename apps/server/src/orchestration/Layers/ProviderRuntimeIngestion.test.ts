@@ -2,7 +2,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { OrchestrationReadModel, ProviderRuntimeEvent } from "@t3tools/contracts";
+import type {
+  OrchestrationReadModel,
+  ProviderRuntimeEvent,
+} from "@t3tools/contracts";
 import {
   ApprovalRequestId,
   CommandId,
@@ -14,7 +17,15 @@ import {
   ThreadId,
   TurnId,
 } from "@t3tools/contracts";
-import { Effect, Exit, Layer, ManagedRuntime, PubSub, Scope, Stream } from "effect";
+import {
+  Effect,
+  Exit,
+  Layer,
+  ManagedRuntime,
+  PubSub,
+  Scope,
+  Stream,
+} from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
@@ -36,7 +47,8 @@ import { ServerConfig } from "../../config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
 const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
-const asItemId = (value: string): ProviderItemId => ProviderItemId.makeUnsafe(value);
+const asItemId = (value: string): ProviderItemId =>
+  ProviderItemId.makeUnsafe(value);
 const asEventId = (value: string): EventId => EventId.makeUnsafe(value);
 const asMessageId = (value: string): MessageId => MessageId.makeUnsafe(value);
 const asThreadId = (value: string): ThreadId => ThreadId.makeUnsafe(value);
@@ -56,9 +68,12 @@ type LegacyProviderRuntimeEvent = {
 };
 
 function createProviderServiceHarness() {
-  const runtimeEventPubSub = Effect.runSync(PubSub.unbounded<ProviderRuntimeEvent>());
+  const runtimeEventPubSub = Effect.runSync(
+    PubSub.unbounded<ProviderRuntimeEvent>(),
+  );
 
-  const unsupported = () => Effect.die(new Error("Unsupported provider call in test")) as never;
+  const unsupported = () =>
+    Effect.die(new Error("Unsupported provider call in test")) as never;
   const service: ProviderServiceShape = {
     startSession: () => unsupported(),
     sendTurn: () => unsupported(),
@@ -74,7 +89,12 @@ function createProviderServiceHarness() {
   };
 
   const emit = (event: LegacyProviderRuntimeEvent): void => {
-    Effect.runSync(PubSub.publish(runtimeEventPubSub, event as unknown as ProviderRuntimeEvent));
+    Effect.runSync(
+      PubSub.publish(
+        runtimeEventPubSub,
+        event as unknown as ProviderRuntimeEvent,
+      ),
+    );
   };
 
   return {
@@ -91,7 +111,9 @@ async function waitForThread(
   const deadline = Date.now() + timeoutMs;
   const poll = async (): Promise<ProviderRuntimeTestThread> => {
     const readModel = await Effect.runPromise(engine.getReadModel());
-    const thread = readModel.threads.find((entry) => entry.id === ThreadId.makeUnsafe("thread-1"));
+    const thread = readModel.threads.find(
+      (entry) => entry.id === ThreadId.makeUnsafe("thread-1"),
+    );
     if (thread && predicate(thread)) {
       return thread;
     }
@@ -105,11 +127,15 @@ async function waitForThread(
 }
 
 type ProviderRuntimeTestReadModel = OrchestrationReadModel;
-type ProviderRuntimeTestThread = ProviderRuntimeTestReadModel["threads"][number];
+type ProviderRuntimeTestThread =
+  ProviderRuntimeTestReadModel["threads"][number];
 type ProviderRuntimeTestMessage = ProviderRuntimeTestThread["messages"][number];
-type ProviderRuntimeTestProposedPlan = ProviderRuntimeTestThread["proposedPlans"][number];
-type ProviderRuntimeTestActivity = ProviderRuntimeTestThread["activities"][number];
-type ProviderRuntimeTestCheckpoint = ProviderRuntimeTestThread["checkpoints"][number];
+type ProviderRuntimeTestProposedPlan =
+  ProviderRuntimeTestThread["proposedPlans"][number];
+type ProviderRuntimeTestActivity =
+  ProviderRuntimeTestThread["activities"][number];
+type ProviderRuntimeTestCheckpoint =
+  ProviderRuntimeTestThread["checkpoints"][number];
 
 describe("ProviderRuntimeIngestion", () => {
   let runtime: ManagedRuntime.ManagedRuntime<
@@ -156,8 +182,12 @@ describe("ProviderRuntimeIngestion", () => {
       Layer.provideMerge(NodeServices.layer),
     );
     runtime = ManagedRuntime.make(layer);
-    const engine = await runtime.runPromise(Effect.service(OrchestrationEngineService));
-    const ingestion = await runtime.runPromise(Effect.service(ProviderRuntimeIngestionService));
+    const engine = await runtime.runPromise(
+      Effect.service(OrchestrationEngineService),
+    );
+    const ingestion = await runtime.runPromise(
+      Effect.service(ProviderRuntimeIngestionService),
+    );
     scope = await Effect.runPromise(Scope.make("sequential"));
     await Effect.runPromise(ingestion.start.pipe(Scope.provide(scope)));
     const drain = () => Effect.runPromise(ingestion.drain);
@@ -229,7 +259,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     await waitForThread(
       harness.engine,
-      (thread) => thread.session?.status === "running" && thread.session?.activeTurnId === "turn-1",
+      (thread) =>
+        thread.session?.status === "running" &&
+        thread.session?.activeTurnId === "turn-1",
     );
 
     harness.emit({
@@ -274,7 +306,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     let thread = await waitForThread(
       harness.engine,
-      (entry) => entry.session?.status === "running" && entry.session?.activeTurnId === null,
+      (entry) =>
+        entry.session?.status === "running" &&
+        entry.session?.activeTurnId === null,
     );
     expect(thread.session?.status).toBe("running");
     expect(thread.session?.lastError).toBeNull();
@@ -399,7 +433,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     await waitForThread(
       harness.engine,
-      (thread) => thread.session?.status === "ready" && thread.session?.activeTurnId === null,
+      (thread) =>
+        thread.session?.status === "ready" &&
+        thread.session?.activeTurnId === null,
     );
   });
 
@@ -453,7 +489,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     await waitForThread(
       harness.engine,
-      (thread) => thread.session?.status === "ready" && thread.session?.activeTurnId === null,
+      (thread) =>
+        thread.session?.status === "ready" &&
+        thread.session?.activeTurnId === null,
     );
   });
 
@@ -473,7 +511,8 @@ describe("ProviderRuntimeIngestion", () => {
     await waitForThread(
       harness.engine,
       (thread) =>
-        thread.session?.status === "running" && thread.session?.activeTurnId === "turn-primary",
+        thread.session?.status === "running" &&
+        thread.session?.activeTurnId === "turn-primary",
     );
 
     harness.emit({
@@ -506,7 +545,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     await waitForThread(
       harness.engine,
-      (thread) => thread.session?.status === "ready" && thread.session?.activeTurnId === null,
+      (thread) =>
+        thread.session?.status === "ready" &&
+        thread.session?.activeTurnId === null,
     );
   });
 
@@ -560,7 +601,9 @@ describe("ProviderRuntimeIngestion", () => {
 
     await waitForThread(
       harness.engine,
-      (thread) => thread.session?.status === "ready" && thread.session?.activeTurnId === null,
+      (thread) =>
+        thread.session?.status === "ready" &&
+        thread.session?.activeTurnId === null,
     );
   });
 
@@ -647,7 +690,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const message = thread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-no-delta",
+      (entry: ProviderRuntimeTestMessage) =>
+        entry.id === "assistant:item-no-delta",
     );
     expect(message?.text).toBe("assistant-only final text");
     expect(message?.streaming).toBe(false);
@@ -676,7 +720,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const proposedPlan = thread.proposedPlans.find(
-      (entry: ProviderRuntimeTestProposedPlan) => entry.id === "plan:thread-1:turn:turn-plan-final",
+      (entry: ProviderRuntimeTestProposedPlan) =>
+        entry.id === "plan:thread-1:turn:turn-plan-final",
     );
     expect(proposedPlan?.planMarkdown).toBe(
       "## Ship plan\n\n- wire projection\n- render follow-up",
@@ -699,7 +744,8 @@ describe("ProviderRuntimeIngestion", () => {
     await waitForThread(
       harness.engine,
       (thread) =>
-        thread.session?.status === "running" && thread.session?.activeTurnId === "turn-plan-buffer",
+        thread.session?.status === "running" &&
+        thread.session?.activeTurnId === "turn-plan-buffer",
     );
 
     harness.emit({
@@ -746,7 +792,9 @@ describe("ProviderRuntimeIngestion", () => {
       (entry: ProviderRuntimeTestProposedPlan) =>
         entry.id === "plan:thread-1:turn:turn-plan-buffer",
     );
-    expect(proposedPlan?.planMarkdown).toBe("## Buffered plan\n\n- first\n- second");
+    expect(proposedPlan?.planMarkdown).toBe(
+      "## Buffered plan\n\n- first\n- second",
+    );
   });
 
   it("buffers assistant deltas by default until completion", async () => {
@@ -764,7 +812,8 @@ describe("ProviderRuntimeIngestion", () => {
     await waitForThread(
       harness.engine,
       (thread) =>
-        thread.session?.status === "running" && thread.session?.activeTurnId === "turn-buffered",
+        thread.session?.status === "running" &&
+        thread.session?.activeTurnId === "turn-buffered",
     );
 
     harness.emit({
@@ -788,7 +837,8 @@ describe("ProviderRuntimeIngestion", () => {
     );
     expect(
       midThread?.messages.some(
-        (message: ProviderRuntimeTestMessage) => message.id === "assistant:item-buffered",
+        (message: ProviderRuntimeTestMessage) =>
+          message.id === "assistant:item-buffered",
       ),
     ).toBe(false);
 
@@ -813,7 +863,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const message = thread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-buffered",
+      (entry: ProviderRuntimeTestMessage) =>
+        entry.id === "assistant:item-buffered",
     );
     expect(message?.text).toBe("buffer me");
     expect(message?.streaming).toBe(false);
@@ -880,7 +931,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const liveMessage = liveThread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-streaming-mode",
+      (entry: ProviderRuntimeTestMessage) =>
+        entry.id === "assistant:item-streaming-mode",
     );
     expect(liveMessage?.streaming).toBe(true);
 
@@ -906,7 +958,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const finalMessage = finalThread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-streaming-mode",
+      (entry: ProviderRuntimeTestMessage) =>
+        entry.id === "assistant:item-streaming-mode",
     );
     expect(finalMessage?.text).toBe("hello live");
     expect(finalMessage?.streaming).toBe(false);
@@ -966,7 +1019,8 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
     const message = thread.messages.find(
-      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-buffer-spill",
+      (entry: ProviderRuntimeTestMessage) =>
+        entry.id === "assistant:item-buffer-spill",
     );
     expect(message?.text.length).toBe(oversizedText.length);
     expect(message?.text).toBe(oversizedText);
@@ -1038,7 +1092,8 @@ describe("ProviderRuntimeIngestion", () => {
         thread.session?.activeTurnId === null &&
         thread.messages.some(
           (message: ProviderRuntimeTestMessage) =>
-            message.id === "assistant:item-complete-dedup" && !message.streaming,
+            message.id === "assistant:item-complete-dedup" &&
+            !message.streaming,
         ),
     );
 
@@ -1093,19 +1148,24 @@ describe("ProviderRuntimeIngestion", () => {
       harness.engine,
       (entry) =>
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "approval.requested",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "approval.requested",
         ) &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "approval.resolved",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "approval.resolved",
         ),
     );
 
     const readModel = await Effect.runPromise(harness.engine.getReadModel());
-    const thread = readModel.threads.find((entry) => entry.id === ThreadId.makeUnsafe("thread-1"));
+    const thread = readModel.threads.find(
+      (entry) => entry.id === ThreadId.makeUnsafe("thread-1"),
+    );
     expect(thread).toBeDefined();
 
     const requested = thread?.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-request-opened",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-request-opened",
     );
     const requestedPayload =
       requested?.payload && typeof requested.payload === "object"
@@ -1115,7 +1175,8 @@ describe("ProviderRuntimeIngestion", () => {
     expect(requestedPayload?.requestType).toBe("command_execution_approval");
 
     const resolved = thread?.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-request-resolved",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-request-resolved",
     );
     const resolvedPayload =
       resolved?.payload && typeof resolved.payload === "object"
@@ -1188,7 +1249,8 @@ describe("ProviderRuntimeIngestion", () => {
         entry.session?.activeTurnId === "turn-warning" &&
         entry.activities.some(
           (activity: ProviderRuntimeTestActivity) =>
-            activity.id === "evt-warning-runtime" && activity.kind === "runtime.warning",
+            activity.id === "evt-warning-runtime" &&
+            activity.kind === "runtime.warning",
         ),
     );
     expect(thread.session?.status).toBe("running");
@@ -1236,14 +1298,16 @@ describe("ProviderRuntimeIngestion", () => {
         entry.session?.status === "ready" &&
         entry.session?.activeTurnId === null &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "tool.started",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "tool.started",
         ),
     );
 
     expect(thread.session?.status).toBe("ready");
     expect(
       thread.activities.some(
-        (activity: ProviderRuntimeTestActivity) => activity.kind === "tool.started",
+        (activity: ProviderRuntimeTestActivity) =>
+          activity.kind === "tool.started",
       ),
     ).toBe(true);
   });
@@ -1328,23 +1392,28 @@ describe("ProviderRuntimeIngestion", () => {
       (entry) =>
         entry.title === "Renamed by provider" &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "turn.plan.updated",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "turn.plan.updated",
         ) &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "tool.updated",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "tool.updated",
         ) &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "runtime.warning",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "runtime.warning",
         ) &&
         entry.checkpoints.some(
-          (checkpoint: ProviderRuntimeTestCheckpoint) => checkpoint.turnId === "turn-p1",
+          (checkpoint: ProviderRuntimeTestCheckpoint) =>
+            checkpoint.turnId === "turn-p1",
         ),
     );
 
     expect(thread.title).toBe("Renamed by provider");
 
     const planActivity = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-turn-plan-updated",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-turn-plan-updated",
     );
     const planPayload =
       planActivity?.payload && typeof planActivity.payload === "object"
@@ -1354,7 +1423,8 @@ describe("ProviderRuntimeIngestion", () => {
     expect(Array.isArray(planPayload?.plan)).toBe(true);
 
     const toolUpdate = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-item-updated",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-item-updated",
     );
     const toolUpdatePayload =
       toolUpdate?.payload && typeof toolUpdate.payload === "object"
@@ -1365,7 +1435,8 @@ describe("ProviderRuntimeIngestion", () => {
     expect(toolUpdatePayload?.status).toBe("in_progress");
 
     const warning = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-runtime-warning",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-runtime-warning",
     );
     const warningPayload =
       warning?.payload && typeof warning.payload === "object"
@@ -1379,7 +1450,9 @@ describe("ProviderRuntimeIngestion", () => {
     );
     expect(checkpoint?.status).toBe("missing");
     expect(checkpoint?.assistantMessageId).toBe("assistant:item-p1-assistant");
-    expect(checkpoint?.checkpointRef).toBe("provider-diff:evt-turn-diff-updated");
+    expect(checkpoint?.checkpointRef).toBe(
+      "provider-diff:evt-turn-diff-updated",
+    );
   });
 
   it("projects Codex task lifecycle chunks into thread activities", async () => {
@@ -1408,7 +1481,8 @@ describe("ProviderRuntimeIngestion", () => {
       turnId: asTurnId("turn-task-1"),
       payload: {
         taskId: "turn-task-1",
-        description: "Comparing the desktop rollout chunks to the app-server stream.",
+        description:
+          "Comparing the desktop rollout chunks to the app-server stream.",
       },
     });
 
@@ -1441,7 +1515,8 @@ describe("ProviderRuntimeIngestion", () => {
       harness.engine,
       (entry) =>
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "task.completed",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "task.completed",
         ) &&
         entry.proposedPlans.some(
           (proposedPlan: ProviderRuntimeTestProposedPlan) =>
@@ -1450,13 +1525,16 @@ describe("ProviderRuntimeIngestion", () => {
     );
 
     const started = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-task-started",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-task-started",
     );
     const progress = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-task-progress",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-task-progress",
     );
     const completed = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-task-completed",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-task-completed",
     );
 
     const progressPayload =
@@ -1475,10 +1553,13 @@ describe("ProviderRuntimeIngestion", () => {
       "Comparing the desktop rollout chunks to the app-server stream.",
     );
     expect(completed?.kind).toBe("task.completed");
-    expect(completedPayload?.detail).toBe("<proposed_plan>\n# Plan title\n</proposed_plan>");
+    expect(completedPayload?.detail).toBe(
+      "<proposed_plan>\n# Plan title\n</proposed_plan>",
+    );
     expect(
       thread.proposedPlans.find(
-        (entry: ProviderRuntimeTestProposedPlan) => entry.id === "plan:thread-1:turn:turn-task-1",
+        (entry: ProviderRuntimeTestProposedPlan) =>
+          entry.id === "plan:thread-1:turn:turn-task-1",
       )?.planMarkdown,
     ).toBe("# Plan title");
   });
@@ -1531,20 +1612,24 @@ describe("ProviderRuntimeIngestion", () => {
       harness.engine,
       (entry) =>
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "user-input.requested",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "user-input.requested",
         ) &&
         entry.activities.some(
-          (activity: ProviderRuntimeTestActivity) => activity.kind === "user-input.resolved",
+          (activity: ProviderRuntimeTestActivity) =>
+            activity.kind === "user-input.resolved",
         ),
     );
 
     const requested = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-user-input-requested",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-user-input-requested",
     );
     expect(requested?.kind).toBe("user-input.requested");
 
     const resolved = thread.activities.find(
-      (activity: ProviderRuntimeTestActivity) => activity.id === "evt-user-input-resolved",
+      (activity: ProviderRuntimeTestActivity) =>
+        activity.id === "evt-user-input-resolved",
     );
     const resolvedPayload =
       resolved?.payload && typeof resolved.payload === "object"

@@ -23,13 +23,13 @@ describe("normalizeCustomModelSlugs", () => {
 
   it("normalizes provider-specific aliases for claude and cursor", () => {
     expect(normalizeCustomModelSlugs(["sonnet"], "claudeCode")).toEqual([]);
-    expect(normalizeCustomModelSlugs(["claude/custom-sonnet"], "claudeCode")).toEqual([
-      "claude/custom-sonnet",
-    ]);
+    expect(
+      normalizeCustomModelSlugs(["claude/custom-sonnet"], "claudeCode"),
+    ).toEqual(["claude/custom-sonnet"]);
     expect(normalizeCustomModelSlugs(["composer"], "cursor")).toEqual([]);
-    expect(normalizeCustomModelSlugs(["cursor/custom-model"], "cursor")).toEqual([
-      "cursor/custom-model",
-    ]);
+    expect(
+      normalizeCustomModelSlugs(["cursor/custom-model"], "cursor"),
+    ).toEqual(["cursor/custom-model"]);
   });
 });
 
@@ -58,19 +58,25 @@ describe("getAppModelOptions", () => {
   });
 
   it("keeps a saved custom provider model available as an exact slug option", () => {
-    const options = getAppModelOptions("claudeCode", ["claude/custom-opus"], "claude/custom-opus");
-
-    expect(options.some((option) => option.slug === "claude/custom-opus" && option.isCustom)).toBe(
-      true,
+    const options = getAppModelOptions(
+      "claudeCode",
+      ["claude/custom-opus"],
+      "claude/custom-opus",
     );
+
+    expect(
+      options.some(
+        (option) => option.slug === "claude/custom-opus" && option.isCustom,
+      ),
+    ).toBe(true);
   });
 });
 
 describe("resolveAppModelSelection", () => {
   it("preserves saved custom model slugs instead of falling back to the default", () => {
-    expect(resolveAppModelSelection("codex", ["galapagos-alpha"], "galapagos-alpha")).toBe(
-      "galapagos-alpha",
-    );
+    expect(
+      resolveAppModelSelection("codex", ["galapagos-alpha"], "galapagos-alpha"),
+    ).toBe("galapagos-alpha");
   });
 
   it("falls back to the provider default when no model is selected", () => {
@@ -84,10 +90,16 @@ describe("timestamp format defaults", () => {
   });
 
   it("includes provider-specific custom slugs in non-codex model lists", () => {
-    const claudeOptions = getAppModelOptions("claudeCode", ["claude/custom-opus"]);
+    const claudeOptions = getAppModelOptions("claudeCode", [
+      "claude/custom-opus",
+    ]);
     const cursorOptions = getAppModelOptions("cursor", ["cursor/custom-model"]);
 
-    expect(claudeOptions.some((option) => option.slug === "claude/custom-opus")).toBe(true);
-    expect(cursorOptions.some((option) => option.slug === "cursor/custom-model")).toBe(true);
+    expect(
+      claudeOptions.some((option) => option.slug === "claude/custom-opus"),
+    ).toBe(true);
+    expect(
+      cursorOptions.some((option) => option.slug === "cursor/custom-model"),
+    ).toBe(true);
   });
 });

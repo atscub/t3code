@@ -14,15 +14,22 @@ import {
   ThreadTurnStartRequestedPayload,
 } from "./orchestration";
 
-const decodeTurnDiffInput = Schema.decodeUnknownEffect(OrchestrationGetTurnDiffInput);
+const decodeTurnDiffInput = Schema.decodeUnknownEffect(
+  OrchestrationGetTurnDiffInput,
+);
 const decodeThreadTurnDiff = Schema.decodeUnknownEffect(ThreadTurnDiff);
-const decodeProjectCreateCommand = Schema.decodeUnknownEffect(ProjectCreateCommand);
-const decodeThreadTurnStartCommand = Schema.decodeUnknownEffect(ThreadTurnStartCommand);
+const decodeProjectCreateCommand =
+  Schema.decodeUnknownEffect(ProjectCreateCommand);
+const decodeThreadTurnStartCommand = Schema.decodeUnknownEffect(
+  ThreadTurnStartCommand,
+);
 const decodeThreadTurnStartRequestedPayload = Schema.decodeUnknownEffect(
   ThreadTurnStartRequestedPayload,
 );
-const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSession);
-const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
+const decodeOrchestrationSession =
+  Schema.decodeUnknownEffect(OrchestrationSession);
+const decodeThreadCreatedPayload =
+  Schema.decodeUnknownEffect(ThreadCreatedPayload);
 
 it.effect("parses turn diff input when fromTurnCount <= toTurnCount", () =>
   Effect.gen(function* () {
@@ -63,23 +70,25 @@ it.effect("rejects thread turn diff when fromTurnCount > toTurnCount", () =>
   }),
 );
 
-it.effect("trims branded ids and command string fields at decode boundaries", () =>
-  Effect.gen(function* () {
-    const parsed = yield* decodeProjectCreateCommand({
-      type: "project.create",
-      commandId: " cmd-1 ",
-      projectId: " project-1 ",
-      title: " Project Title ",
-      workspaceRoot: " /tmp/workspace ",
-      defaultModel: " gpt-5.2 ",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    });
-    assert.strictEqual(parsed.commandId, "cmd-1");
-    assert.strictEqual(parsed.projectId, "project-1");
-    assert.strictEqual(parsed.title, "Project Title");
-    assert.strictEqual(parsed.workspaceRoot, "/tmp/workspace");
-    assert.strictEqual(parsed.defaultModel, "gpt-5.2");
-  }),
+it.effect(
+  "trims branded ids and command string fields at decode boundaries",
+  () =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeProjectCreateCommand({
+        type: "project.create",
+        commandId: " cmd-1 ",
+        projectId: " project-1 ",
+        title: " Project Title ",
+        workspaceRoot: " /tmp/workspace ",
+        defaultModel: " gpt-5.2 ",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      assert.strictEqual(parsed.commandId, "cmd-1");
+      assert.strictEqual(parsed.projectId, "project-1");
+      assert.strictEqual(parsed.title, "Project Title");
+      assert.strictEqual(parsed.workspaceRoot, "/tmp/workspace");
+      assert.strictEqual(parsed.defaultModel, "gpt-5.2");
+    }),
 );
 
 it.effect("rejects command fields that become empty after trim", () =>
@@ -98,46 +107,56 @@ it.effect("rejects command fields that become empty after trim", () =>
   }),
 );
 
-it.effect("decodes thread.turn.start defaults for provider and runtime mode", () =>
-  Effect.gen(function* () {
-    const parsed = yield* decodeThreadTurnStartCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-turn-1",
-      threadId: "thread-1",
-      message: {
-        messageId: "msg-1",
-        role: "user",
-        text: "hello",
-        attachments: [],
-      },
-      createdAt: "2026-01-01T00:00:00.000Z",
-    });
-    assert.strictEqual(parsed.provider, undefined);
-    assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
-    assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
-  }),
+it.effect(
+  "decodes thread.turn.start defaults for provider and runtime mode",
+  () =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeThreadTurnStartCommand({
+        type: "thread.turn.start",
+        commandId: "cmd-turn-1",
+        threadId: "thread-1",
+        message: {
+          messageId: "msg-1",
+          role: "user",
+          text: "hello",
+          attachments: [],
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      assert.strictEqual(parsed.provider, undefined);
+      assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
+      assert.strictEqual(
+        parsed.interactionMode,
+        DEFAULT_PROVIDER_INTERACTION_MODE,
+      );
+    }),
 );
 
-it.effect("preserves explicit provider and runtime mode in thread.turn.start", () =>
-  Effect.gen(function* () {
-    const parsed = yield* decodeThreadTurnStartCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-turn-2",
-      threadId: "thread-1",
-      message: {
-        messageId: "msg-2",
-        role: "user",
-        text: "hello",
-        attachments: [],
-      },
-      provider: "codex",
-      runtimeMode: "full-access",
-      createdAt: "2026-01-01T00:00:00.000Z",
-    });
-    assert.strictEqual(parsed.provider, "codex");
-    assert.strictEqual(parsed.runtimeMode, "full-access");
-    assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
-  }),
+it.effect(
+  "preserves explicit provider and runtime mode in thread.turn.start",
+  () =>
+    Effect.gen(function* () {
+      const parsed = yield* decodeThreadTurnStartCommand({
+        type: "thread.turn.start",
+        commandId: "cmd-turn-2",
+        threadId: "thread-1",
+        message: {
+          messageId: "msg-2",
+          role: "user",
+          text: "hello",
+          attachments: [],
+        },
+        provider: "codex",
+        runtimeMode: "full-access",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      assert.strictEqual(parsed.provider, "codex");
+      assert.strictEqual(parsed.runtimeMode, "full-access");
+      assert.strictEqual(
+        parsed.interactionMode,
+        DEFAULT_PROVIDER_INTERACTION_MODE,
+      );
+    }),
 );
 
 it.effect("decodes thread.created runtime mode for historical events", () =>
@@ -202,7 +221,10 @@ it.effect("accepts cursor provider in thread.turn.start", () =>
       createdAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(parsed.provider, "cursor");
-    assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
+    assert.strictEqual(
+      parsed.interactionMode,
+      DEFAULT_PROVIDER_INTERACTION_MODE,
+    );
   }),
 );
 
@@ -217,7 +239,10 @@ it.effect(
       });
       assert.strictEqual(parsed.provider, undefined);
       assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
-      assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
+      assert.strictEqual(
+        parsed.interactionMode,
+        DEFAULT_PROVIDER_INTERACTION_MODE,
+      );
     }),
 );
 

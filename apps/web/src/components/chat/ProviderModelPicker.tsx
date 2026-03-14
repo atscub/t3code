@@ -17,10 +17,19 @@ import {
   MenuSubTrigger,
   MenuTrigger,
 } from "../ui/menu";
-import { ClaudeAI, CursorIcon, Gemini, Icon, OpenAI, OpenCodeIcon } from "../Icons";
+import {
+  ClaudeAI,
+  CursorIcon,
+  Gemini,
+  Icon,
+  OpenAI,
+  OpenCodeIcon,
+} from "../Icons";
 import { cn } from "~/lib/utils";
 
-function isAvailableProviderOption(option: (typeof PROVIDER_OPTIONS)[number]): option is {
+function isAvailableProviderOption(
+  option: (typeof PROVIDER_OPTIONS)[number],
+): option is {
   value: ProviderKind;
   label: string;
   available: true;
@@ -43,7 +52,9 @@ function resolveModelForProviderPicker(
     return direct.slug;
   }
 
-  const byName = options.find((option) => option.name.toLowerCase() === trimmedValue.toLowerCase());
+  const byName = options.find(
+    (option) => option.name.toLowerCase() === trimmedValue.toLowerCase(),
+  );
   if (byName) {
     return byName.slug;
   }
@@ -67,8 +78,12 @@ const PROVIDER_ICON_BY_PROVIDER: Record<ProviderPickerKind, Icon> = {
   cursor: CursorIcon,
 };
 
-export const AVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(isAvailableProviderOption);
-const UNAVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter((option) => !option.available);
+export const AVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(
+  isAvailableProviderOption,
+);
+const UNAVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(
+  (option) => !option.available,
+);
 const COMING_SOON_PROVIDER_OPTIONS = [
   { id: "opencode", label: "OpenCode", icon: OpenCodeIcon },
   { id: "gemini", label: "Gemini", icon: Gemini },
@@ -78,7 +93,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   provider: ProviderKind;
   model: ModelSlug;
   lockedProvider: ProviderKind | null;
-  modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>>;
+  modelOptionsByProvider: Record<
+    ProviderKind,
+    ReadonlyArray<{ slug: string; name: string }>
+  >;
   compact?: boolean;
   disabled?: boolean;
   onProviderModelChange: (provider: ProviderKind, model: ModelSlug) => void;
@@ -86,7 +104,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const selectedProviderOptions = props.modelOptionsByProvider[props.provider];
   const selectedModelLabel =
-    selectedProviderOptions.find((option) => option.slug === props.model)?.name ?? props.model;
+    selectedProviderOptions.find((option) => option.slug === props.model)
+      ?.name ?? props.model;
   const ProviderIcon = PROVIDER_ICON_BY_PROVIDER[props.provider];
 
   return (
@@ -114,9 +133,15 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         }
       >
         <span
-          className={cn("flex min-w-0 items-center gap-2", props.compact ? "max-w-36" : undefined)}
+          className={cn(
+            "flex min-w-0 items-center gap-2",
+            props.compact ? "max-w-36" : undefined,
+          )}
         >
-          <ProviderIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground/70" />
+          <ProviderIcon
+            aria-hidden="true"
+            className="size-4 shrink-0 text-muted-foreground/70"
+          />
           <span className="truncate">{selectedModelLabel}</span>
           <ChevronDownIcon aria-hidden="true" className="size-3 opacity-60" />
         </span>
@@ -125,7 +150,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
         {AVAILABLE_PROVIDER_OPTIONS.map((option) => {
           const OptionIcon = PROVIDER_ICON_BY_PROVIDER[option.value];
           const isDisabledByProviderLock =
-            props.lockedProvider !== null && props.lockedProvider !== option.value;
+            props.lockedProvider !== null &&
+            props.lockedProvider !== option.value;
           return (
             <MenuSub key={option.value}>
               <MenuSubTrigger disabled={isDisabledByProviderLock}>
@@ -153,15 +179,17 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                       setIsMenuOpen(false);
                     }}
                   >
-                    {props.modelOptionsByProvider[option.value].map((modelOption) => (
-                      <MenuRadioItem
-                        key={`${option.value}:${modelOption.slug}`}
-                        value={modelOption.slug}
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        {modelOption.name}
-                      </MenuRadioItem>
-                    ))}
+                    {props.modelOptionsByProvider[option.value].map(
+                      (modelOption) => (
+                        <MenuRadioItem
+                          key={`${option.value}:${modelOption.slug}`}
+                          value={modelOption.slug}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          {modelOption.name}
+                        </MenuRadioItem>
+                      ),
+                    )}
                   </MenuRadioGroup>
                 </MenuGroup>
               </MenuSubPopup>
@@ -177,7 +205,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
                 aria-hidden="true"
                 className={cn(
                   "size-4 shrink-0 opacity-80",
-                  option.value === "claudeCode" ? "" : "text-muted-foreground/85",
+                  option.value === "claudeCode"
+                    ? ""
+                    : "text-muted-foreground/85",
                 )}
               />
               <span>{option.label}</span>
@@ -192,7 +222,10 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
           const OptionIcon = option.icon;
           return (
             <MenuItem key={option.id} disabled>
-              <OptionIcon aria-hidden="true" className="size-4 shrink-0 opacity-80" />
+              <OptionIcon
+                aria-hidden="true"
+                className="size-4 shrink-0 opacity-80"
+              />
               <span>{option.label}</span>
               <span className="ms-auto text-[11px] text-muted-foreground/80 uppercase tracking-[0.08em]">
                 Coming soon

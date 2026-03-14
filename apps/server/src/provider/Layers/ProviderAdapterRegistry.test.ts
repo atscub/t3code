@@ -4,7 +4,10 @@ import { assertFailure } from "@effect/vitest/utils";
 
 import { Effect, Layer, Stream } from "effect";
 
-import { ClaudeCodeAdapter, ClaudeCodeAdapterShape } from "../Services/ClaudeCodeAdapter.ts";
+import {
+  ClaudeCodeAdapter,
+  ClaudeCodeAdapterShape,
+} from "../Services/ClaudeCodeAdapter.ts";
 import { CodexAdapter, CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderAdapterRegistryLive } from "./ProviderAdapterRegistry.ts";
@@ -75,8 +78,13 @@ layer("ProviderAdapterRegistryLive", (it) => {
   it.effect("fails with ProviderUnsupportedError for unknown providers", () =>
     Effect.gen(function* () {
       const registry = yield* ProviderAdapterRegistry;
-      const adapter = yield* registry.getByProvider("unknown" as ProviderKind).pipe(Effect.result);
-      assertFailure(adapter, new ProviderUnsupportedError({ provider: "unknown" }));
+      const adapter = yield* registry
+        .getByProvider("unknown" as ProviderKind)
+        .pipe(Effect.result);
+      assertFailure(
+        adapter,
+        new ProviderUnsupportedError({ provider: "unknown" }),
+      );
     }),
   );
 });

@@ -23,7 +23,10 @@ type CursorModelCapability = {
   readonly defaultThinking: boolean;
 };
 
-const CURSOR_MODEL_CAPABILITY_BY_FAMILY: Record<CursorModelFamily, CursorModelCapability> = {
+const CURSOR_MODEL_CAPABILITY_BY_FAMILY: Record<
+  CursorModelFamily,
+  CursorModelCapability
+> = {
   auto: {
     supportsReasoning: false,
     supportsFast: false,
@@ -91,10 +94,17 @@ const CURSOR_MODEL_CAPABILITY_BY_FAMILY: Record<CursorModelFamily, CursorModelCa
 
 type CatalogProvider = keyof typeof MODEL_OPTIONS_BY_PROVIDER;
 
-const MODEL_SLUG_SET_BY_PROVIDER: Record<CatalogProvider, ReadonlySet<ModelSlug>> = {
-  claudeCode: new Set(MODEL_OPTIONS_BY_PROVIDER.claudeCode.map((option) => option.slug)),
+const MODEL_SLUG_SET_BY_PROVIDER: Record<
+  CatalogProvider,
+  ReadonlySet<ModelSlug>
+> = {
+  claudeCode: new Set(
+    MODEL_OPTIONS_BY_PROVIDER.claudeCode.map((option) => option.slug),
+  ),
   codex: new Set(MODEL_OPTIONS_BY_PROVIDER.codex.map((option) => option.slug)),
-  cursor: new Set(MODEL_OPTIONS_BY_PROVIDER.cursor.map((option) => option.slug)),
+  cursor: new Set(
+    MODEL_OPTIONS_BY_PROVIDER.cursor.map((option) => option.slug),
+  ),
 };
 
 const CURSOR_MODEL_FAMILY_SET = new Set<CursorModelFamily>(
@@ -125,7 +135,9 @@ function fallbackCursorModelFamily(): CursorModelFamily {
   return fallback.family;
 }
 
-function resolveCursorModelFamily(model: string | null | undefined): CursorModelFamily {
+function resolveCursorModelFamily(
+  model: string | null | undefined,
+): CursorModelFamily {
   const normalized = normalizeModelSlug(model, "cursor");
   if (!normalized) {
     return fallbackCursorModelFamily();
@@ -166,10 +178,15 @@ function resolveCursorReasoning(model: CursorModelSlug): CursorReasoningOption {
   return "normal";
 }
 
-export function parseCursorModelSelection(model: string | null | undefined): CursorModelSelection {
+export function parseCursorModelSelection(
+  model: string | null | undefined,
+): CursorModelSelection {
   const family = resolveCursorModelFamily(model);
   const capability = CURSOR_MODEL_CAPABILITY_BY_FAMILY[family];
-  const normalized = resolveModelSlugForProvider("cursor", model) as CursorModelSlug;
+  const normalized = resolveModelSlugForProvider(
+    "cursor",
+    model,
+  ) as CursorModelSlug;
 
   if (capability.supportsReasoning) {
     return {
@@ -207,7 +224,9 @@ export function resolveCursorModelFromSelection(input: {
   const capability = CURSOR_MODEL_CAPABILITY_BY_FAMILY[family];
 
   if (capability.supportsReasoning) {
-    const reasoning = CURSOR_REASONING_OPTIONS.includes(input.reasoning ?? "normal")
+    const reasoning = CURSOR_REASONING_OPTIONS.includes(
+      input.reasoning ?? "normal",
+    )
       ? (input.reasoning ?? "normal")
       : capability.defaultReasoning;
     const reasoningSuffix = reasoning === "normal" ? "" : `-${reasoning}`;
@@ -241,7 +260,10 @@ export function normalizeModelSlug(
     return null;
   }
 
-  const aliases = MODEL_SLUG_ALIASES_BY_PROVIDER[provider] as Record<string, ModelSlug>;
+  const aliases = MODEL_SLUG_ALIASES_BY_PROVIDER[provider] as Record<
+    string,
+    ModelSlug
+  >;
   const aliased = aliases[trimmed];
   return typeof aliased === "string" ? aliased : (trimmed as ModelSlug);
 }
@@ -273,8 +295,12 @@ export function getReasoningEffortOptions(
   return REASONING_EFFORT_OPTIONS_BY_PROVIDER[provider];
 }
 
-export function getDefaultReasoningEffort(provider: "codex"): CodexReasoningEffort;
-export function getDefaultReasoningEffort(provider: ProviderKind): CodexReasoningEffort | null;
+export function getDefaultReasoningEffort(
+  provider: "codex",
+): CodexReasoningEffort;
+export function getDefaultReasoningEffort(
+  provider: ProviderKind,
+): CodexReasoningEffort | null;
 export function getDefaultReasoningEffort(
   provider: ProviderKind = "codex",
 ): CodexReasoningEffort | null {
