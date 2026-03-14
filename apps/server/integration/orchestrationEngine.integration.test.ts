@@ -972,7 +972,7 @@ it.live(
         Effect.gen(function* () {
           yield* seedProjectAndThread(harness);
 
-          yield* harness.adapterHarness.queueTurnResponseForNextSession({
+          yield* harness.adapterHarness!.queueTurnResponseForNextSession({
             events: [
               {
                 type: "turn.started",
@@ -1042,7 +1042,7 @@ it.live(
         Effect.gen(function* () {
           yield* seedProjectAndThread(harness);
 
-          yield* harness.adapterHarness.queueTurnResponseForNextSession({
+          yield* harness.adapterHarness!.queueTurnResponseForNextSession({
             events: [
               {
                 type: "turn.started",
@@ -1096,12 +1096,12 @@ it.live(
 
           yield* harness.providerService.stopAll();
           yield* waitForSync(
-            () => harness.adapterHarness.listActiveSessionIds(),
+            () => harness.adapterHarness!.listActiveSessionIds(),
             (sessionIds) => sessionIds.length === 0,
             "provider stopAll",
           );
 
-          yield* harness.adapterHarness.queueTurnResponseForNextSession({
+          yield* harness.adapterHarness!.queueTurnResponseForNextSession({
             events: [
               {
                 type: "turn.started",
@@ -1145,7 +1145,7 @@ it.live(
             text: "After restart",
           });
           yield* waitForSync(
-            () => harness.adapterHarness.getStartCount(),
+            () => harness.adapterHarness!.getStartCount(),
             (count) => count === 2,
             "claude provider recovery start",
           );
@@ -1175,7 +1175,7 @@ it.live("forwards claudeCode approval responses to the provider session", () =>
       Effect.gen(function* () {
         yield* seedProjectAndThread(harness);
 
-        yield* harness.adapterHarness.queueTurnResponseForNextSession({
+        yield* harness.adapterHarness!.queueTurnResponseForNextSession({
           events: [
             {
               type: "turn.started",
@@ -1244,7 +1244,7 @@ it.live("forwards claudeCode approval responses to the provider session", () =>
         );
 
         const approvalResponses = yield* waitForSync(
-          () => harness.adapterHarness.getApprovalResponses(THREAD_ID),
+          () => harness.adapterHarness!.getApprovalResponses(THREAD_ID),
           (responses) => responses.length === 1,
           "claude provider approval response",
         );
@@ -1260,7 +1260,7 @@ it.live("forwards thread.turn.interrupt to claudeCode provider sessions", () =>
       Effect.gen(function* () {
         yield* seedProjectAndThread(harness);
 
-        yield* harness.adapterHarness.queueTurnResponseForNextSession({
+        yield* harness.adapterHarness!.queueTurnResponseForNextSession({
           events: [
             {
               type: "turn.started",
@@ -1322,7 +1322,7 @@ it.live("forwards thread.turn.interrupt to claudeCode provider sessions", () =>
         );
 
         const interruptCalls = yield* waitForSync(
-          () => harness.adapterHarness.getInterruptCalls(THREAD_ID),
+          () => harness.adapterHarness!.getInterruptCalls(THREAD_ID),
           (calls) => calls.length === 1,
           "claude provider interrupt call",
         );
@@ -1340,7 +1340,7 @@ it.live(
         Effect.gen(function* () {
           yield* seedProjectAndThread(harness);
 
-          yield* harness.adapterHarness.queueTurnResponseForNextSession({
+          yield* harness.adapterHarness!.queueTurnResponseForNextSession({
             events: [
               {
                 type: "turn.started",
@@ -1396,7 +1396,7 @@ it.live(
               entry.session?.threadId === "thread-1",
           );
 
-          yield* harness.adapterHarness.queueTurnResponse(THREAD_ID, {
+          yield* harness.adapterHarness!.queueTurnResponse(THREAD_ID, {
             events: [
               {
                 type: "turn.started",
@@ -1482,7 +1482,7 @@ it.live(
             false,
           );
           assert.deepEqual(
-            harness.adapterHarness.getRollbackCalls(THREAD_ID),
+            harness.adapterHarness!.getRollbackCalls(THREAD_ID),
             [1],
           );
         }),

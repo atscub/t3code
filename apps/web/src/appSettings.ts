@@ -48,9 +48,6 @@ const AppSettingsSchema = Schema.Struct({
   timestampFormat: Schema.Literals(["locale", "12-hour", "24-hour"]).pipe(
     Schema.withConstructorDefault(() => Option.some(DEFAULT_TIMESTAMP_FORMAT)),
   ),
-  timestampFormat: Schema.Literals(["locale", "12-hour", "24-hour"]).pipe(
-    Schema.withConstructorDefault(() => Option.some(DEFAULT_TIMESTAMP_FORMAT)),
-  ),
   customCodexModels: Schema.Array(Schema.String).pipe(
     Schema.withConstructorDefault(() => Option.some([])),
   ),
