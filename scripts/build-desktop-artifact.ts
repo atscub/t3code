@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
+import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
 import { resolveCatalogDependencies } from "./lib/resolve-catalog.ts";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
@@ -20,8 +23,20 @@ const BuildArch = Schema.Literals(["arm64", "x64", "universal"]);
 const RepoRoot = Effect.service(Path.Path).pipe(
   Effect.flatMap((path) => path.fromFileUrl(new URL("..", import.meta.url))),
 );
-const IconSource = Effect.zipWith(RepoRoot, Effect.service(Path.Path), (repoRoot, path) =>
-  path.join(repoRoot, "assets/macos-icon-1024.png"),
+const ProductionMacIconSource = Effect.zipWith(
+  RepoRoot,
+  Effect.service(Path.Path),
+  (repoRoot, path) => path.join(repoRoot, BRAND_ASSET_PATHS.productionMacIconPng),
+);
+const ProductionLinuxIconSource = Effect.zipWith(
+  RepoRoot,
+  Effect.service(Path.Path),
+  (repoRoot, path) => path.join(repoRoot, BRAND_ASSET_PATHS.productionLinuxIconPng),
+);
+const ProductionWindowsIconSource = Effect.zipWith(
+  RepoRoot,
+  Effect.service(Path.Path),
+  (repoRoot, path) => path.join(repoRoot, BRAND_ASSET_PATHS.productionWindowsIconIco),
 );
 const encodeJsonString = Schema.encodeEffect(Schema.UnknownFromJsonString);
 
@@ -102,6 +117,39 @@ function resolveGitCommitHash(repoRoot: string): string {
     return "unknown";
   }
   return hash.toLowerCase();
+}
+
+function resolvePythonForNodeGyp(): string | undefined {
+  const configured = process.env.npm_config_python ?? process.env.PYTHON;
+  if (configured && existsSync(configured)) {
+    return configured;
+  }
+
+  if (process.platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA;
+    if (localAppData) {
+      for (const version of ["Python313", "Python312", "Python311", "Python310"]) {
+        const candidate = join(localAppData, "Programs", "Python", version, "python.exe");
+        if (existsSync(candidate)) {
+          return candidate;
+        }
+      }
+    }
+  }
+
+  const probe = spawnSync("python", ["-c", "import sys;print(sys.executable)"], {
+    encoding: "utf8",
+  });
+  if (probe.status !== 0) {
+    return undefined;
+  }
+
+  const executable = probe.stdout.trim();
+  if (!executable || !existsSync(executable)) {
+    return undefined;
+  }
+
+  return executable;
 }
 
 interface ResolvedBuildOptions {
@@ -261,7 +309,7 @@ function stageMacIcons(stageResourcesDir: string, verbose: boolean) {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const iconSource = yield* IconSource;
+    const iconSource = yield* ProductionMacIconSource;
     if (!(yield* fs.exists(iconSource))) {
       return yield* new BuildScriptError({
         message: `Production icon source is missing at ${iconSource}`,
@@ -282,6 +330,38 @@ function stageMacIcons(stageResourcesDir: string, verbose: boolean) {
     );
 
     yield* generateMacIconSet(iconSource, iconIcnsPath, tmpRoot, path, verbose);
+  });
+}
+
+function stageLinuxIcons(stageResourcesDir: string) {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const iconSource = yield* ProductionLinuxIconSource;
+    if (!(yield* fs.exists(iconSource))) {
+      return yield* new BuildScriptError({
+        message: `Production icon source is missing at ${iconSource}`,
+      });
+    }
+
+    const iconPath = path.join(stageResourcesDir, "icon.png");
+    yield* fs.copyFile(iconSource, iconPath);
+  });
+}
+
+function stageWindowsIcons(stageResourcesDir: string) {
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const iconSource = yield* ProductionWindowsIconSource;
+    if (!(yield* fs.exists(iconSource))) {
+      return yield* new BuildScriptError({
+        message: `Production Windows icon source is missing at ${iconSource}`,
+      });
+    }
+
+    const iconPath = path.join(stageResourcesDir, "icon.ico");
+    yield* fs.copyFile(iconSource, iconPath);
   });
 }
 
@@ -416,31 +496,18 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
   stageResourcesDir: string,
   verbose: boolean,
 ) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-
   if (platform === "mac") {
     yield* stageMacIcons(stageResourcesDir, verbose);
     return;
   }
 
   if (platform === "linux") {
-    const iconPath = path.join(stageResourcesDir, "icon.png");
-    if (!(yield* fs.exists(iconPath))) {
-      return yield* new BuildScriptError({
-        message: `Missing Linux icon at ${iconPath}`,
-      });
-    }
+    yield* stageLinuxIcons(stageResourcesDir);
     return;
   }
 
   if (platform === "win") {
-    const iconPath = path.join(stageResourcesDir, "icon.ico");
-    if (!(yield* fs.exists(iconPath))) {
-      return yield* new BuildScriptError({
-        message: `Missing Windows icon at ${iconPath}`,
-      });
-    }
+    yield* stageWindowsIcons(stageResourcesDir);
   }
 });
 
@@ -515,6 +582,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       ChildProcess.make({
         cwd: repoRoot,
         ...commandOutputOptions(options.verbose),
+        // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
+        shell: process.platform === "win32",
       })`bun run build:desktop`,
     );
   }
@@ -544,6 +613,9 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   yield* fs.copy(distDirs.serverDist, path.join(stageAppDir, "apps/server/dist"));
 
   yield* assertPlatformBuildResources(options.platform, stageResourcesDir, options.verbose);
+
+  // electron-builder is filtering out stageResourcesDir directory in the AppImage for production
+  yield* fs.copy(stageResourcesDir, path.join(stageAppDir, "apps/desktop/prod-resources"));
 
   const stagePackageJson: StagePackageJson = {
     name: "t3-code-desktop",
@@ -577,6 +649,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     ChildProcess.make({
       cwd: stageAppDir,
       ...commandOutputOptions(options.verbose),
+      // Windows needs shell mode to resolve .cmd shims (e.g. bun.cmd).
+      shell: process.platform === "win32",
     })`bun install --production`,
   );
 
@@ -597,6 +671,16 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     delete buildEnv.APPLE_API_ISSUER;
   }
 
+  if (process.platform === "win32") {
+    const python = resolvePythonForNodeGyp();
+    if (python) {
+      buildEnv.PYTHON = python;
+      buildEnv.npm_config_python = python;
+    }
+    buildEnv.npm_config_msvs_version = buildEnv.npm_config_msvs_version ?? "2022";
+    buildEnv.GYP_MSVS_VERSION = buildEnv.GYP_MSVS_VERSION ?? "2022";
+  }
+
   yield* Effect.log(
     `[desktop-artifact] Building ${options.platform}/${options.target} (arch=${options.arch}, version=${appVersion})...`,
   );
@@ -605,6 +689,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       cwd: stageAppDir,
       env: buildEnv,
       ...commandOutputOptions(options.verbose),
+      // Windows needs shell mode to resolve .cmd shims.
+      shell: process.platform === "win32",
     })`bunx electron-builder ${platformConfig.cliFlag} --${options.arch} --publish never`,
   );
 

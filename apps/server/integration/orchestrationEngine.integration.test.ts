@@ -21,6 +21,10 @@ import {
   type OrchestrationIntegrationHarness,
 } from "./OrchestrationEngineHarness.integration.ts";
 import { checkpointRefForThreadTurn } from "../src/checkpointing/Utils.ts";
+import type {
+  CheckpointDiffFinalizedReceipt,
+  TurnProcessingQuiescedReceipt,
+} from "../src/orchestration/Services/RuntimeReceiptBus.ts";
 
 const asMessageId = (value: string): MessageId => MessageId.makeUnsafe(value);
 const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
@@ -180,13 +184,29 @@ it.live("runs a single turn end-to-end and persists checkpoint state in sqlite +
         ],
       };
 
-      yield* harness.adapterHarness.queueTurnResponseForNextSession(turnResponse);
+      yield* harness.adapterHarness!.queueTurnResponseForNextSession(turnResponse);
       yield* startTurn({
         harness,
         commandId: "cmd-turn-start-single",
         messageId: "msg-user-single",
         text: "Say hello",
       });
+      const finalizedReceipt = yield* harness.waitForReceipt(
+        (receipt): receipt is CheckpointDiffFinalizedReceipt =>
+          receipt.type === "checkpoint.diff.finalized" &&
+          receipt.threadId === THREAD_ID &&
+          receipt.checkpointTurnCount === 1,
+      );
+      if (finalizedReceipt.type !== "checkpoint.diff.finalized") {
+        throw new Error("Expected checkpoint.diff.finalized receipt.");
+      }
+      assert.equal(finalizedReceipt.status, "ready");
+      yield* harness.waitForReceipt(
+        (receipt): receipt is TurnProcessingQuiescedReceipt =>
+          receipt.type === "turn.processing.quiesced" &&
+          receipt.threadId === THREAD_ID &&
+          receipt.checkpointTurnCount === 1,
+      );
 
       const thread = yield* harness.waitForThread(
         THREAD_ID,
@@ -207,8 +227,6 @@ it.live("runs a single turn end-to-end and persists checkpoint state in sqlite +
       assert.equal(checkpointRows[0]?.checkpointTurnCount, 1);
       assert.equal(checkpointRows[0]?.status, "ready");
       assert.deepEqual(checkpointRows[0]?.files, []);
-
-      yield* harness.waitForDomainEvent((event) => event.type === "thread.turn-diff-completed");
 
       const ref0 = checkpointRefForThreadTurn(THREAD_ID, 0);
       const ref1 = checkpointRefForThreadTurn(THREAD_ID, 1);
@@ -314,7 +332,7 @@ it.live("runs multi-turn file edits and persists checkpoint diffs", () =>
     Effect.gen(function* () {
       yield* seedProjectAndThread(harness);
 
-      yield* harness.adapterHarness.queueTurnResponseForNextSession({
+      yield* harness.adapterHarness!.queueTurnResponseForNextSession({
         events: [
           {
             type: "turn.started",
@@ -367,13 +385,19 @@ it.live("runs multi-turn file edits and persists checkpoint diffs", () =>
         messageId: "msg-user-multi-1",
         text: "Make first edit",
       });
+      yield* harness.waitForReceipt(
+        (receipt): receipt is CheckpointDiffFinalizedReceipt =>
+          receipt.type === "checkpoint.diff.finalized" &&
+          receipt.threadId === THREAD_ID &&
+          receipt.checkpointTurnCount === 1,
+      );
 
       yield* harness.waitForThread(
         THREAD_ID,
         (entry) => entry.checkpoints.length === 1 && entry.session?.threadId === "thread-1",
       );
 
-      yield* harness.adapterHarness.queueTurnResponse(THREAD_ID, {
+      yield* harness.adapterHarness!.queueTurnResponse(THREAD_ID, {
         events: [
           {
             type: "turn.started",
@@ -408,6 +432,22 @@ it.live("runs multi-turn file edits and persists checkpoint diffs", () =>
         messageId: "msg-user-multi-2",
         text: "Make second edit",
       });
+      const secondReceipt = yield* harness.waitForReceipt(
+        (receipt): receipt is CheckpointDiffFinalizedReceipt =>
+          receipt.type === "checkpoint.diff.finalized" &&
+          receipt.threadId === THREAD_ID &&
+          receipt.checkpointTurnCount === 2,
+      );
+      if (secondReceipt.type !== "checkpoint.diff.finalized") {
+        throw new Error("Expected checkpoint.diff.finalized receipt.");
+      }
+      assert.equal(secondReceipt.status, "ready");
+      yield* harness.waitForReceipt(
+        (receipt): receipt is TurnProcessingQuiescedReceipt =>
+          receipt.type === "turn.processing.quiesced" &&
+          receipt.threadId === THREAD_ID &&
+          receipt.checkpointTurnCount === 2,
+      );
 
       const secondTurnThread = yield* harness.waitForThread(
         THREAD_ID,
@@ -473,7 +513,7 @@ it.live("tracks approval requests and resolves pending approvals on user respons
     Effect.gen(function* () {
       yield* seedProjectAndThread(harness);
 
-      yield* harness.adapterHarness.queueTurnResponseForNextSession({
+      yield* harness.adapterHarness!.queueTurnResponseForNextSession({
         events: [
           {
             type: "turn.started",
@@ -538,7 +578,7 @@ it.live("tracks approval requests and resolves pending approvals on user respons
       assert.equal(resolvedRow.decision, "accept");
 
       const approvalResponses = yield* waitForSync(
-        () => harness.adapterHarness.getApprovalResponses(THREAD_ID),
+        () => harness.adapterHarness!.getApprovalResponses(THREAD_ID),
         (responses) => responses.length === 1,
         "provider approval response",
       );
@@ -554,7 +594,7 @@ it.live("records failed turn runtime state and checkpoint status as error", () =
     Effect.gen(function* () {
       yield* seedProjectAndThread(harness);
 
-      yield* harness.adapterHarness.queueTurnResponseForNextSession({
+      yield* harness.adapterHarness!.queueTurnResponseForNextSession({
         events: [
           {
             type: "turn.started",
@@ -633,7 +673,7 @@ it.live("reverts to an earlier checkpoint and trims checkpoint projections + git
     Effect.gen(function* () {
       yield* seedProjectAndThread(harness);
 
-      yield* harness.adapterHarness.queueTurnResponseForNextSession({
+      yield* harness.adapterHarness!.queueTurnResponseForNextSession({
         events: [
           {
             type: "turn.started",
@@ -691,7 +731,7 @@ it.live("reverts to an earlier checkpoint and trims checkpoint projections + git
         (entry) => entry.session?.threadId === "thread-1" && entry.checkpoints.length === 1,
       );
 
-      yield* harness.adapterHarness.queueTurnResponse(THREAD_ID, {
+      yield* harness.adapterHarness!.queueTurnResponse(THREAD_ID, {
         events: [
           {
             type: "turn.started",
@@ -796,7 +836,7 @@ it.live("reverts to an earlier checkpoint and trims checkpoint projections + git
         gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 2)),
         false,
       );
-      assert.deepEqual(harness.adapterHarness.getRollbackCalls(THREAD_ID), [1]);
+      assert.deepEqual(harness.adapterHarness!.getRollbackCalls(THREAD_ID), [1]);
 
       const checkpointRows = yield* harness.checkpointRepository.listByThreadId({
         threadId: THREAD_ID,

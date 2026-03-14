@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import type { ProviderKind } from "./orchestration";
+import { ProviderKind } from "./orchestration";
 
 export const CURSOR_REASONING_OPTIONS = ["low", "normal", "high", "xhigh"] as const;
 export type CursorReasoningOption = (typeof CURSOR_REASONING_OPTIONS)[number];

@@ -2,13 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   CURSOR_MODEL_FAMILY_OPTIONS,
   CURSOR_REASONING_OPTIONS,
-  DEFAULT_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
-  DEFAULT_REASONING_EFFORT_BY_PROVIDER,
-  MODEL_OPTIONS,
   MODEL_OPTIONS_BY_PROVIDER,
   REASONING_EFFORT_OPTIONS_BY_PROVIDER,
-} from "../../contracts/src";
+} from "@t3tools/contracts";
 
 import {
   getDefaultModel,
@@ -41,6 +38,11 @@ describe("normalizeModelSlug", () => {
     expect(normalizeModelSlug("gpt-5.2-codex")).toBe("gpt-5.2-codex");
   });
 
+  it("does not leak prototype properties as aliases", () => {
+    expect(normalizeModelSlug("toString")).toBe("toString");
+    expect(normalizeModelSlug("constructor")).toBe("constructor");
+  });
+
   it("uses provider-specific aliases", () => {
     expect(normalizeModelSlug("sonnet", "claudeCode")).toBe("claude-sonnet-4-6");
     expect(normalizeModelSlug("opus-4.6", "claudeCode")).toBe("claude-opus-4-6");
@@ -60,17 +62,17 @@ describe("normalizeModelSlug", () => {
 
 describe("resolveModelSlug", () => {
   it("returns default only when the model is missing", () => {
-    expect(resolveModelSlug(undefined)).toBe(DEFAULT_MODEL);
-    expect(resolveModelSlug(null)).toBe(DEFAULT_MODEL);
+    expect(resolveModelSlug(undefined)).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
+    expect(resolveModelSlug(null)).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
   });
 
   it("preserves unknown custom models", () => {
-    expect(resolveModelSlug("gpt-4.1")).toBe(DEFAULT_MODEL);
-    expect(resolveModelSlug("custom/internal-model")).toBe(DEFAULT_MODEL);
+    expect(resolveModelSlug("gpt-4.1")).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
+    expect(resolveModelSlug("custom/internal-model")).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
   });
 
   it("resolves only supported model options", () => {
-    for (const model of MODEL_OPTIONS) {
+    for (const model of MODEL_OPTIONS_BY_PROVIDER.codex) {
       expect(resolveModelSlug(model.slug)).toBe(model.slug);
     }
   });
@@ -96,8 +98,8 @@ describe("resolveModelSlug", () => {
   });
 
   it("keeps codex defaults for backward compatibility", () => {
-    expect(getDefaultModel()).toBe(DEFAULT_MODEL);
-    expect(getModelOptions()).toEqual(MODEL_OPTIONS);
+    expect(getDefaultModel()).toBe(DEFAULT_MODEL_BY_PROVIDER.codex);
+    expect(getModelOptions()).toEqual(MODEL_OPTIONS_BY_PROVIDER.codex);
     expect(getModelOptions("claudeCode")).toEqual(MODEL_OPTIONS_BY_PROVIDER.claudeCode);
     expect(getModelOptions("cursor")).toEqual(MODEL_OPTIONS_BY_PROVIDER.cursor);
     expect(getCursorModelFamilyOptions()).toEqual(CURSOR_MODEL_FAMILY_OPTIONS);
@@ -167,14 +169,8 @@ describe("getReasoningEffortOptions", () => {
 
 describe("getDefaultReasoningEffort", () => {
   it("returns provider-scoped defaults", () => {
-    expect(getDefaultReasoningEffort("codex")).toBe(
-      DEFAULT_REASONING_EFFORT_BY_PROVIDER.codex,
-    );
-    expect(getDefaultReasoningEffort("claudeCode")).toBe(
-      DEFAULT_REASONING_EFFORT_BY_PROVIDER.claudeCode,
-    );
-    expect(getDefaultReasoningEffort("cursor")).toBe(
-      DEFAULT_REASONING_EFFORT_BY_PROVIDER.cursor,
-    );
+    expect(getDefaultReasoningEffort("codex")).toBe("high");
+    expect(getDefaultReasoningEffort("claudeCode")).toBeNull();
+    expect(getDefaultReasoningEffort("cursor")).toBeNull();
   });
 });
