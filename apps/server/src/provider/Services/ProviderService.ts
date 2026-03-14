@@ -100,6 +100,11 @@ export interface ProviderServiceShape {
   }) => Effect.Effect<void, ProviderServiceError>;
 
   /**
+   * Stop all active provider sessions.
+   */
+  readonly stopAll: () => Effect.Effect<void, ProviderServiceError>;
+
+  /**
    * Canonical provider runtime event stream.
    *
    * Fan-out is owned by ProviderService (not by a standalone event-bus service).
@@ -110,6 +115,7 @@ export interface ProviderServiceShape {
 /**
  * ProviderService - Service tag for provider orchestration.
  */
-export class ProviderService extends ServiceMap.Service<ProviderService, ProviderServiceShape>()(
-  "t3/provider/Services/ProviderService",
-) {}
+export class ProviderService extends ServiceMap.Service<
+  ProviderService,
+  ProviderServiceShape
+>()("t3/provider/Services/ProviderService") {}

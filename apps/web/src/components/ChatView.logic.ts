@@ -1,14 +1,25 @@
-import { ProjectId, type ProviderKind, type ThreadId } from "@t3tools/contracts";
+import {
+  ProjectId,
+  type ProviderKind,
+  type ThreadId,
+} from "@t3tools/contracts";
 import { type ChatMessage, type Thread } from "../types";
 import { randomUUID } from "~/lib/utils";
 import { getAppModelOptions } from "../appSettings";
-import { type ComposerImageAttachment, type DraftThreadState } from "../composerDraftStore";
+import {
+  type ComposerImageAttachment,
+  type DraftThreadState,
+} from "../composerDraftStore";
 import { Schema } from "effect";
 
-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "t3code:last-invoked-script-by-project";
+export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY =
+  "t3code:last-invoked-script-by-project";
 const WORKTREE_BRANCH_PREFIX = "t3code";
 
-export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
+export const LastInvokedScriptByProjectSchema = Schema.Record(
+  ProjectId,
+  Schema.String,
+);
 
 export function buildLocalDraftThread(
   threadId: ThreadId,
@@ -39,7 +50,11 @@ export function buildLocalDraftThread(
 }
 
 export function revokeBlobPreviewUrl(previewUrl: string | undefined): void {
-  if (!previewUrl || typeof URL === "undefined" || !previewUrl.startsWith("blob:")) {
+  if (
+    !previewUrl ||
+    typeof URL === "undefined" ||
+    !previewUrl.startsWith("blob:")
+  ) {
     return;
   }
   URL.revokeObjectURL(previewUrl);
@@ -57,14 +72,17 @@ export function revokeUserMessagePreviewUrls(message: ChatMessage): void {
   }
 }
 
-export function collectUserMessageBlobPreviewUrls(message: ChatMessage): string[] {
+export function collectUserMessageBlobPreviewUrls(
+  message: ChatMessage,
+): string[] {
   if (message.role !== "user" || !message.attachments) {
     return [];
   }
   const previewUrls: string[] = [];
   for (const attachment of message.attachments) {
     if (attachment.type !== "image") continue;
-    if (!attachment.previewUrl || !attachment.previewUrl.startsWith("blob:")) continue;
+    if (!attachment.previewUrl || !attachment.previewUrl.startsWith("blob:"))
+      continue;
     previewUrls.push(attachment.previewUrl);
   }
   return previewUrls;
@@ -116,10 +134,33 @@ export function cloneComposerImageForRetry(
   }
 }
 
+export function getCustomModelsForProvider(
+  settings: {
+    customCodexModels: readonly string[];
+    customClaudeModels: readonly string[];
+    customCursorModels: readonly string[];
+  },
+  provider: ProviderKind,
+): readonly string[] {
+  switch (provider) {
+    case "claudeCode":
+      return settings.customClaudeModels;
+    case "cursor":
+      return settings.customCursorModels;
+    case "codex":
+    default:
+      return settings.customCodexModels;
+  }
+}
+
 export function getCustomModelOptionsByProvider(settings: {
   customCodexModels: readonly string[];
+  customClaudeModels: readonly string[];
+  customCursorModels: readonly string[];
 }): Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>> {
   return {
     codex: getAppModelOptions("codex", settings.customCodexModels),
+    claudeCode: getAppModelOptions("claudeCode", settings.customClaudeModels),
+    cursor: getAppModelOptions("cursor", settings.customCursorModels),
   };
 }

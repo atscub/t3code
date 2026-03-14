@@ -7,8 +7,17 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vitest";
 
-import { markThreadUnread, reorderProjects, syncServerReadModel, type AppState } from "./store";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "./types";
+import {
+  markThreadUnread,
+  reorderProjects,
+  syncServerReadModel,
+  type AppState,
+} from "./store";
+import {
+  DEFAULT_INTERACTION_MODE,
+  DEFAULT_RUNTIME_MODE,
+  type Thread,
+} from "./types";
 
 function makeThread(overrides: Partial<Thread> = {}): Thread {
   return {
@@ -50,7 +59,9 @@ function makeState(thread: Thread): AppState {
   };
 }
 
-function makeReadModelThread(overrides: Partial<OrchestrationReadModel["threads"][number]>) {
+function makeReadModelThread(
+  overrides: Partial<OrchestrationReadModel["threads"][number]>,
+) {
   return {
     id: ThreadId.makeUnsafe("thread-1"),
     projectId: ProjectId.makeUnsafe("project-1"),
@@ -73,7 +84,9 @@ function makeReadModelThread(overrides: Partial<OrchestrationReadModel["threads"
   } satisfies OrchestrationReadModel["threads"][number];
 }
 
-function makeReadModel(thread: OrchestrationReadModel["threads"][number]): OrchestrationReadModel {
+function makeReadModel(
+  thread: OrchestrationReadModel["threads"][number],
+): OrchestrationReadModel {
   return {
     snapshotSequence: 1,
     updatedAt: "2026-02-27T00:00:00.000Z",
@@ -126,7 +139,10 @@ describe("store pure functions", () => {
       }),
     );
 
-    const next = markThreadUnread(initialState, ThreadId.makeUnsafe("thread-1"));
+    const next = markThreadUnread(
+      initialState,
+      ThreadId.makeUnsafe("thread-1"),
+    );
 
     const updatedThread = next.threads[0];
     expect(updatedThread).toBeDefined();
@@ -144,7 +160,10 @@ describe("store pure functions", () => {
       }),
     );
 
-    const next = markThreadUnread(initialState, ThreadId.makeUnsafe("thread-1"));
+    const next = markThreadUnread(
+      initialState,
+      ThreadId.makeUnsafe("thread-1"),
+    );
 
     expect(next).toEqual(initialState);
   });
@@ -186,7 +205,11 @@ describe("store pure functions", () => {
 
     const next = reorderProjects(state, project1, project3);
 
-    expect(next.projects.map((project) => project.id)).toEqual([project2, project3, project1]);
+    expect(next.projects.map((project) => project.id)).toEqual([
+      project2,
+      project3,
+      project1,
+    ]);
   });
 });
 
@@ -195,7 +218,7 @@ describe("store read model sync", () => {
     const initialState = makeState(makeThread());
     const readModel = makeReadModel(
       makeReadModelThread({
-        model: "claude-opus-4-6",
+        model: "unknown-model-xyz",
       }),
     );
 
@@ -255,6 +278,70 @@ describe("store read model sync", () => {
 
     const next = syncServerReadModel(initialState, readModel);
 
-    expect(next.projects.map((project) => project.id)).toEqual([project2, project1, project3]);
+    expect(next.projects.map((project) => project.id)).toEqual([
+      project2,
+      project1,
+      project3,
+    ]);
+  });
+});
+
+describe("store read model sync", () => {
+  it("preserves claude model slugs without an active session", () => {
+    const initialState = makeState(makeThread());
+    const readModel = makeReadModel(
+      makeReadModelThread({
+        model: "claude-opus-4-6",
+      }),
+    );
+
+    const next = syncServerReadModel(initialState, readModel);
+
+    expect(next.threads[0]?.model).toBe("claude-opus-4-6");
+  });
+
+  it("resolves claude aliases when session provider is claudeCode", () => {
+    const initialState = makeState(makeThread());
+    const readModel = makeReadModel(
+      makeReadModelThread({
+        model: "sonnet",
+        session: {
+          threadId: ThreadId.makeUnsafe("thread-1"),
+          status: "ready",
+          providerName: "claudeCode",
+          runtimeMode: "approval-required",
+          activeTurnId: null,
+          lastError: null,
+          updatedAt: "2026-02-27T00:00:00.000Z",
+        },
+      }),
+    );
+
+    const next = syncServerReadModel(initialState, readModel);
+
+    expect(next.threads[0]?.model).toBe("claude-sonnet-4-6");
+  });
+
+  it("resolves cursor aliases when session provider is cursor", () => {
+    const initialState = makeState(makeThread());
+    const readModel = makeReadModel(
+      makeReadModelThread({
+        model: "composer",
+        session: {
+          threadId: ThreadId.makeUnsafe("thread-1"),
+          status: "ready",
+          providerName: "cursor",
+          runtimeMode: "approval-required",
+          activeTurnId: null,
+          lastError: null,
+          updatedAt: "2026-02-27T00:00:00.000Z",
+        },
+      }),
+    );
+
+    const next = syncServerReadModel(initialState, readModel);
+
+    expect(next.threads[0]?.model).toBe("composer-1.5");
+    expect(next.threads[0]?.session?.provider).toBe("cursor");
   });
 });

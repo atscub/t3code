@@ -26,7 +26,7 @@ export const PROVIDER_OPTIONS: Array<{
   available: boolean;
 }> = [
   { value: "codex", label: "Codex", available: true },
-  { value: "claudeCode", label: "Claude Code", available: false },
+  { value: "claudeCode", label: "Claude Code", available: true },
   { value: "cursor", label: "Cursor", available: false },
 ];
 
@@ -106,7 +106,10 @@ export function formatDuration(durationMs: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
-export function formatElapsed(startIso: string, endIso: string | undefined): string | null {
+export function formatElapsed(
+  startIso: string,
+  endIso: string | undefined,
+): string | null {
   if (!endIso) return null;
   const startedAt = Date.parse(startIso);
   const endedAt = Date.parse(endIso);
@@ -116,8 +119,14 @@ export function formatElapsed(startIso: string, endIso: string | undefined): str
   return formatDuration(endedAt - startedAt);
 }
 
-type LatestTurnTiming = Pick<OrchestrationLatestTurn, "turnId" | "startedAt" | "completedAt">;
-type SessionActivityState = Pick<ThreadSession, "orchestrationStatus" | "activeTurnId">;
+type LatestTurnTiming = Pick<
+  OrchestrationLatestTurn,
+  "turnId" | "startedAt" | "completedAt"
+>;
+type SessionActivityState = Pick<
+  ThreadSession,
+  "orchestrationStatus" | "activeTurnId"
+>;
 
 export function isLatestTurnSettled(
   latestTurn: LatestTurnTiming | null,
@@ -141,7 +150,9 @@ export function deriveActiveWorkStartedAt(
   return sendStartedAt;
 }
 
-function requestKindFromRequestType(requestType: unknown): PendingApproval["requestKind"] | null {
+function requestKindFromRequestType(
+  requestType: unknown,
+): PendingApproval["requestKind"] | null {
   switch (requestType) {
     case "command_execution_approval":
     case "exec_command_approval":
@@ -180,7 +191,10 @@ export function derivePendingApprovals(
         : payload
           ? requestKindFromRequestType(payload.requestType)
           : null;
-    const detail = payload && typeof payload.detail === "string" ? payload.detail : undefined;
+    const detail =
+      payload && typeof payload.detail === "string"
+        ? payload.detail
+        : undefined;
 
     if (activity.kind === "approval.requested" && requestId && requestKind) {
       openByRequestId.set(requestId, {
@@ -246,7 +260,10 @@ function parseUserInputQuestions(
             description: optionRecord.description,
           };
         })
-        .filter((option): option is UserInputQuestion["options"][number] => option !== null);
+        .filter(
+          (option): option is UserInputQuestion["options"][number] =>
+            option !== null,
+        );
       if (options.length === 0) {
         return null;
       }
@@ -334,7 +351,9 @@ export function deriveActivePlanState(
         return null;
       }
       const status =
-        record.status === "completed" || record.status === "inProgress" ? record.status : "pending";
+        record.status === "completed" || record.status === "inProgress"
+          ? record.status
+          : "pending";
       return {
         step: record.step,
         status,
@@ -370,7 +389,8 @@ export function findLatestProposedPlan(
       .filter((proposedPlan) => proposedPlan.turnId === latestTurnId)
       .toSorted(
         (left, right) =>
-          left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id),
+          left.updatedAt.localeCompare(right.updatedAt) ||
+          left.id.localeCompare(right.id),
       )
       .at(-1);
     if (matchingTurnPlan) {
@@ -387,7 +407,8 @@ export function findLatestProposedPlan(
   const latestPlan = [...proposedPlans]
     .toSorted(
       (left, right) =>
-        left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id),
+        left.updatedAt.localeCompare(right.updatedAt) ||
+        left.id.localeCompare(right.id),
     )
     .at(-1);
   if (!latestPlan) {
@@ -409,9 +430,14 @@ export function deriveWorkLogEntries(
 ): WorkLogEntry[] {
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
   return ordered
-    .filter((activity) => (latestTurnId ? activity.turnId === latestTurnId : true))
+    .filter((activity) =>
+      latestTurnId ? activity.turnId === latestTurnId : true,
+    )
     .filter((activity) => activity.kind !== "tool.started")
-    .filter((activity) => activity.kind !== "task.started" && activity.kind !== "task.completed")
+    .filter(
+      (activity) =>
+        activity.kind !== "task.started" && activity.kind !== "task.completed",
+    )
     .filter((activity) => activity.summary !== "Checkpoint captured")
     .map((activity) => {
       const payload =
@@ -429,7 +455,11 @@ export function deriveWorkLogEntries(
       };
       const itemType = extractWorkLogItemType(payload);
       const requestKind = extractWorkLogRequestKind(payload);
-      if (payload && typeof payload.detail === "string" && payload.detail.length > 0) {
+      if (
+        payload &&
+        typeof payload.detail === "string" &&
+        payload.detail.length > 0
+      ) {
         const detail = stripTrailingExitCode(payload.detail).output;
         if (detail) {
           entry.detail = detail;
@@ -455,7 +485,9 @@ export function deriveWorkLogEntries(
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function asTrimmedString(value: unknown): string | null {
@@ -480,7 +512,9 @@ function normalizeCommandValue(value: unknown): string | null {
   return parts.length > 0 ? parts.join(" ") : null;
 }
 
-function extractToolCommand(payload: Record<string, unknown> | null): string | null {
+function extractToolCommand(
+  payload: Record<string, unknown> | null,
+): string | null {
   const data = asRecord(payload?.data);
   const item = asRecord(data?.item);
   const itemResult = asRecord(item?.result);
@@ -494,7 +528,9 @@ function extractToolCommand(payload: Record<string, unknown> | null): string | n
   return candidates.find((candidate) => candidate !== null) ?? null;
 }
 
-function extractToolTitle(payload: Record<string, unknown> | null): string | null {
+function extractToolTitle(
+  payload: Record<string, unknown> | null,
+): string | null {
   return asTrimmedString(payload?.title);
 }
 
@@ -503,9 +539,10 @@ function stripTrailingExitCode(value: string): {
   exitCode?: number | undefined;
 } {
   const trimmed = value.trim();
-  const match = /^(?<output>[\s\S]*?)(?:\s*<exited with exit code (?<code>\d+)>)\s*$/i.exec(
-    trimmed,
-  );
+  const match =
+    /^(?<output>[\s\S]*?)(?:\s*<exited with exit code (?<code>\d+)>)\s*$/i.exec(
+      trimmed,
+    );
   if (!match?.groups) {
     return {
       output: trimmed.length > 0 ? trimmed : null,
@@ -522,7 +559,10 @@ function stripTrailingExitCode(value: string): {
 function extractWorkLogItemType(
   payload: Record<string, unknown> | null,
 ): WorkLogEntry["itemType"] | undefined {
-  if (typeof payload?.itemType === "string" && isToolLifecycleItemType(payload.itemType)) {
+  if (
+    typeof payload?.itemType === "string" &&
+    isToolLifecycleItemType(payload.itemType)
+  ) {
     return payload.itemType;
   }
   return undefined;
@@ -550,7 +590,12 @@ function pushChangedFile(target: string[], seen: Set<string>, value: unknown) {
   target.push(normalized);
 }
 
-function collectChangedFiles(value: unknown, target: string[], seen: Set<string>, depth: number) {
+function collectChangedFiles(
+  value: unknown,
+  target: string[],
+  seen: Set<string>,
+  depth: number,
+) {
   if (depth > 4 || target.length >= 12) {
     return;
   }
@@ -598,7 +643,9 @@ function collectChangedFiles(value: unknown, target: string[], seen: Set<string>
   }
 }
 
-function extractChangedFiles(payload: Record<string, unknown> | null): string[] {
+function extractChangedFiles(
+  payload: Record<string, unknown> | null,
+): string[] {
   const changedFiles: string[] = [];
   const seen = new Set<string>();
   collectChangedFiles(asRecord(payload?.data), changedFiles, seen, 0);
@@ -619,7 +666,10 @@ function compareActivitiesByOrder(
     return -1;
   }
 
-  return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+  return (
+    left.createdAt.localeCompare(right.createdAt) ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 export function hasToolActivityForTurn(
@@ -627,7 +677,9 @@ export function hasToolActivityForTurn(
   turnId: TurnId | null | undefined,
 ): boolean {
   if (!turnId) return false;
-  return activities.some((activity) => activity.turnId === turnId && activity.tone === "tool");
+  return activities.some(
+    (activity) => activity.turnId === turnId && activity.tone === "tool",
+  );
 }
 
 export function deriveTimelineEntries(
@@ -641,12 +693,14 @@ export function deriveTimelineEntries(
     createdAt: message.createdAt,
     message,
   }));
-  const proposedPlanRows: TimelineEntry[] = proposedPlans.map((proposedPlan) => ({
-    id: proposedPlan.id,
-    kind: "proposed-plan",
-    createdAt: proposedPlan.createdAt,
-    proposedPlan,
-  }));
+  const proposedPlanRows: TimelineEntry[] = proposedPlans.map(
+    (proposedPlan) => ({
+      id: proposedPlan.id,
+      kind: "proposed-plan",
+      createdAt: proposedPlan.createdAt,
+      proposedPlan,
+    }),
+  );
   const workRows: TimelineEntry[] = workEntries.map((entry) => ({
     id: entry.id,
     kind: "work",
@@ -661,7 +715,9 @@ export function deriveTimelineEntries(
 export function inferCheckpointTurnCountByTurnId(
   summaries: TurnDiffSummary[],
 ): Record<TurnId, number> {
-  const sorted = [...summaries].toSorted((a, b) => a.completedAt.localeCompare(b.completedAt));
+  const sorted = [...summaries].toSorted((a, b) =>
+    a.completedAt.localeCompare(b.completedAt),
+  );
   const result: Record<TurnId, number> = {};
   for (let index = 0; index < sorted.length; index += 1) {
     const summary = sorted[index];
