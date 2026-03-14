@@ -88,6 +88,7 @@ interface ToolInFlight {
   readonly toolName: string;
   readonly title: string;
   readonly detail?: string;
+  readonly inputChunks: string[];
 }
 
 interface ClaudeSessionContext {
@@ -253,6 +254,25 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
     return `${toolName}: ${serialized}`;
   }
   return `${toolName}: ${serialized.slice(0, 397)}...`;
+}
+
+function tryParseJson(raw: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function rebuildToolDetail(tool: ToolInFlight): string | undefined {
+  if (tool.inputChunks.length === 0) {
+    return tool.detail;
+  }
+  const parsed = tryParseJson(tool.inputChunks.join(""));
+  return parsed ? summarizeToolRequest(tool.toolName, parsed) : tool.detail;
 }
 
 function titleForTool(itemType: CanonicalItemType): string {
@@ -826,6 +846,12 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
               },
             });
           }
+          if (event.delta.type === "input_json_delta") {
+            const tool = context.inFlightTools.get(event.index);
+            if (tool) {
+              tool.inputChunks.push(event.delta.partial_json);
+            }
+          }
           return;
         }
 
@@ -854,6 +880,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
             toolName,
             title: titleForTool(itemType),
             detail,
+            inputChunks: [],
           };
           context.inFlightTools.set(index, tool);
 
@@ -898,6 +925,8 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
           }
           context.inFlightTools.delete(index);
 
+          const completedDetail = rebuildToolDetail(tool);
+
           const stamp = yield* makeEventStamp();
           yield* offerRuntimeEvent({
             type: "item.completed",
@@ -911,7 +940,7 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
               itemType: tool.itemType,
               status: "completed",
               title: tool.title,
-              ...(tool.detail ? { detail: tool.detail } : {}),
+              ...(completedDetail ? { detail: completedDetail } : {}),
             },
             providerRefs: {
               ...providerThreadRef(context),
