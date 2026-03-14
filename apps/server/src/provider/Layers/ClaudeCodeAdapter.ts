@@ -1610,7 +1610,10 @@ function makeClaudeCodeAdapter(options?: ClaudeCodeAdapterLiveOptions) {
         });
 
         const session: ProviderSession = {
-          threadId: providerThreadId,
+          // threadId is intentionally deferred until the SDK emits a real
+          // session_id — the spread below keeps it undefined for synthetic IDs
+          // so that callers never see a fabricated provider thread id.
+          threadId: providerThreadId as ThreadId,
           provider: PROVIDER,
           status: "ready",
           runtimeMode: input.runtimeMode,
